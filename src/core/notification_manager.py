@@ -32,4 +32,4 @@ class NotificationManager:
         elif not notification:
             print(f"Notification (plyer not installed): {title} - {message}") # Console fallback
 
-# Removed: notification_manager = None <-- THIS LINE SHOULD BE DELETED
+# Removed: notification_manager = None # THIS LINE MUST BE DELETED FROM YOUR FILE

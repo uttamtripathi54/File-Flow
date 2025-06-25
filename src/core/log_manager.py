@@ -23,10 +23,15 @@ class LogManager:
 
         # File Handler
         try:
+            # Ensure the directory for the log file exists
+            log_dir = os.path.dirname(self.log_file_path)
+            if log_dir and not os.path.exists(log_dir):
+                os.makedirs(log_dir)
             file_handler = logging.FileHandler(self.log_file_path)
             file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
             self.logger.addHandler(file_handler)
         except Exception as e:
+            # Fallback print, as logging system itself might be failing
             print(f"Warning: Could not set up file logging to {self.log_file_path}: {e}")
 
         # Stream Handler (for console output, mainly during development)
@@ -36,7 +41,8 @@ class LogManager:
 
         # Custom Handler for GUI queue
         self.queue_handler = QueueHandler(self.log_queue)
-        self.queue_handler.setFormatter(logging.Formatter('%(message)s')) # Simple format for GUI
+        # Use a simple formatter for the GUI as we'll wrap it in a dict
+        self.queue_handler.setFormatter(logging.Formatter('%(message)s'))
         self.logger.addHandler(self.queue_handler)
 
     def info(self, message):
@@ -69,7 +75,10 @@ class QueueHandler(logging.Handler):
         self.log_queue = log_queue
 
     def emit(self, record):
-        """Emits a log record by putting it into the queue."""
-        self.log_queue.put(self.format(record))
+        """
+        Emits a log record by putting it into the queue, wrapped in a dictionary.
+        This ensures all items in the queue are dictionaries with a 'type' key.
+        """
+        self.log_queue.put({"type": "log", "message": self.format(record)})
 
-# Removed: log_manager = None  <-- THIS LINE SHOULD BE DELETED
+# Removed: log_manager = None # THIS LINE MUST BE DELETED FROM YOUR FILE

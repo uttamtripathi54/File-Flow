@@ -1,14 +1,9 @@
-# ==============================================================================
-# File: src/app.py
-# Description: The main entry point for the Super Smart File Organizer application.
-#              Initializes the Tkinter root and starts the main window.
-# ==============================================================================
-
 import tkinter as tk
 from src.gui.main_window import MainWindow
 from src.core.log_manager import LogManager # Explicitly import LogManager class
 from src.core.notification_manager import NotificationManager # Explicitly import NotificationManager class
 from src.config.settings import SettingsManager
+from src.core.file_utils import set_global_log_manager # Import the setter for file_utils
 
 def main():
     """
@@ -29,7 +24,6 @@ def main():
 
     # Set the global log_manager instance for file_utils to use
     # This makes sure utility functions can access the main logger instance.
-    from src.core.file_utils import set_global_log_manager
     set_global_log_manager(app_log_manager)
 
     # 4. Create and run the main GUI window, passing the initialized managers

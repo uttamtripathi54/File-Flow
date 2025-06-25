@@ -1,5 +1,5 @@
 {
-    "default_source_dir": "C:/Users/Uttam/Downloads",
+    "default_source_dir": "C:/Users/Uttam/Data Analyst/SpamIQ",
     "default_destination_dir": "C:/Users/Uttam/Downloads/DEMO_ENHANCE",
     "file_categories": {
         "Documents": [
@@ -67,5 +67,12 @@
     "duplicate_handling": "rename",
     "enable_desktop_notifications": true,
     "log_file_path": "organizer_log.txt",
+    "exclude_folders": [
+        ".git",
+        "venv",
+        "__pycache__",
+        "node_modules",
+        ".DS_Store"
+    ],
     "sort_by_date_format": "None"
 }

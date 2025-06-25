@@ -18,8 +18,20 @@ class MainWindow(tk.Tk):
     def __init__(self, settings_manager: SettingsManager, app_log_manager: LogManager, app_notification_manager: NotificationManager):
         super().__init__()
         self.title("Super Smart File Organizer")
-        self.geometry("700x550")
+        self.geometry("700x580") # Increased height slightly for better spacing
         self.resizable(False, False) # Fixed size for simplicity
+
+        # Apply a modern theme for better aesthetics
+        s = ttk.Style()
+        s.theme_use('clam') # Or 'alt', 'default', 'vista', 'xpnative', 'aqua' (macOS)
+        # Configure some basic widget styles for a cleaner look
+        s.configure('TLabel', font=('Segoe UI', 10))
+        s.configure('TButton', font=('Segoe UI', 10, 'bold'), padding=6)
+        s.configure('TEntry', font=('Segoe UI', 10))
+        s.configure('TRadiobutton', font=('Segoe UI', 10))
+        s.configure('TOptionMenu', font=('Segoe UI', 10))
+        s.configure('TProgressbar', thickness=15) # Make progress bar a bit thicker
+        s.configure('TFrame', background='#f0f0f0') # Subtle background for frames
 
         # Assign the passed manager instances
         self.settings_manager = settings_manager
@@ -43,7 +55,7 @@ class MainWindow(tk.Tk):
         self.rowconfigure(0, weight=1)
 
         # Main Frame
-        main_frame = ttk.Frame(self, padding="15")
+        main_frame = ttk.Frame(self, padding="20") # Increased overall padding
         main_frame.grid(row=0, column=0, sticky="nsew")
         main_frame.columnconfigure(0, weight=1) # Allow content to expand
 
@@ -52,32 +64,34 @@ class MainWindow(tk.Tk):
         source_frame = ttk.Frame(main_frame)
         source_frame.grid(row=1, column=0, sticky="ew", pady=(0, 10))
         source_frame.columnconfigure(0, weight=1)
-        self.source_dir_entry = ttk.Entry(source_frame, width=50)
+        self.source_dir_entry = ttk.Entry(source_frame, width=60) # Increased width
         self.source_dir_entry.grid(row=0, column=0, sticky="ew")
-        ttk.Button(source_frame, text="Browse", command=self._browse_source_dir).grid(row=0, column=1, padx=(5, 0))
+        ttk.Button(source_frame, text="Browse", command=self._browse_source_dir).grid(row=0, column=1, padx=(10, 0)) # Added padx
 
         # Destination Directory Selection
-        ttk.Label(main_frame, text="Destination Directory:").grid(row=2, column=0, sticky="w", pady=(0, 2))
+        ttk.Label(main_frame, text="Destination Directory:").grid(row=2, column=0, sticky="w", pady=(10, 2)) # Added pady
         dest_frame = ttk.Frame(main_frame)
         dest_frame.grid(row=3, column=0, sticky="ew", pady=(0, 10))
         dest_frame.columnconfigure(0, weight=1)
-        self.destination_dir_entry = ttk.Entry(dest_frame, width=50)
+        self.destination_dir_entry = ttk.Entry(dest_frame, width=60) # Increased width
         self.destination_dir_entry.grid(row=0, column=0, sticky="ew")
-        ttk.Button(dest_frame, text="Browse", command=self._browse_destination_dir).grid(row=0, column=1, padx=(5, 0))
+        ttk.Button(dest_frame, text="Browse", command=self._browse_destination_dir).grid(row=0, column=1, padx=(10, 0)) # Added padx
 
         # Duplicate Handling Option
-        ttk.Label(main_frame, text="Duplicate Handling:").grid(row=4, column=0, sticky="w", pady=(0, 2))
+        ttk.Label(main_frame, text="Duplicate Handling:").grid(row=4, column=0, sticky="w", pady=(10, 2)) # Added pady
         self.duplicate_handling_var = tk.StringVar(value="rename") # Default to 'rename'
         duplicate_frame = ttk.Frame(main_frame)
         duplicate_frame.grid(row=5, column=0, sticky="w", pady=(0, 10))
-        ttk.Radiobutton(duplicate_frame, text="Rename new file", variable=self.duplicate_handling_var, value="rename").pack(side="left", padx=(0, 10))
+        ttk.Radiobutton(duplicate_frame, text="Rename new file", variable=self.duplicate_handling_var, value="rename").pack(side="left", padx=(0, 15)) # Increased padx
         ttk.Radiobutton(duplicate_frame, text="Skip existing file", variable=self.duplicate_handling_var, value="skip").pack(side="left")
 
         # Sort by Date Option
-        ttk.Label(main_frame, text="Sort by Date:").grid(row=6, column=0, sticky="w", pady=(0, 2))
+        ttk.Label(main_frame, text="Sort by Date:").grid(row=6, column=0, sticky="w", pady=(10, 2)) # Added pady
         self.sort_by_date_var = tk.StringVar(value="None")
         sort_by_date_options = ["None", "Year", "Year-Month", "Year-Month-Day"]
-        ttk.OptionMenu(main_frame, self.sort_by_date_var, self.sort_by_date_var.get(), *sort_by_date_options).grid(row=7, column=0, sticky="w", pady=(0, 10))
+        # Use a more explicit dropdown to control styling better
+        self.sort_by_date_menu = ttk.OptionMenu(main_frame, self.sort_by_date_var, self.sort_by_date_var.get(), *sort_by_date_options)
+        self.sort_by_date_menu.grid(row=7, column=0, sticky="w", pady=(0, 20)) # Increased pady
 
 
         # Control Buttons
@@ -99,10 +113,10 @@ class MainWindow(tk.Tk):
         # Progress Bar and Status
         self.progress_var = tk.DoubleVar()
         self.progress_bar = ttk.Progressbar(main_frame, orient="horizontal", length=400, mode="determinate", variable=self.progress_var)
-        self.progress_bar.grid(row=9, column=0, sticky="ew", pady=(10, 5))
+        self.progress_bar.grid(row=9, column=0, sticky="ew", pady=(15, 5)) # Increased pady
 
         self.status_label = ttk.Label(main_frame, text="Ready.")
-        self.status_label.grid(row=10, column=0, sticky="w", pady=(0, 10))
+        self.status_label.grid(row=10, column=0, sticky="w", pady=(0, 15)) # Increased pady
 
         # Log Display Area
         ttk.Label(main_frame, text="Activity Log:").grid(row=11, column=0, sticky="w", pady=(0, 2))
@@ -111,7 +125,9 @@ class MainWindow(tk.Tk):
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(0, weight=1)
 
-        self.log_text = tk.Text(log_frame, wrap="word", height=10, width=60, state="disabled", font=('TkFixedFont', 9))
+        # Using Text widget for scrollable log display
+        self.log_text = tk.Text(log_frame, wrap="word", height=10, width=60, state="disabled",
+                                font=('Segoe UI', 9), padx=5, pady=5, bd=2, relief="sunken") # Added some styling
         self.log_text.grid(row=0, column=0, sticky="nsew")
 
         log_scrollbar = ttk.Scrollbar(log_frame, orient="vertical", command=self.log_text.yview)
@@ -184,6 +200,8 @@ class MainWindow(tk.Tk):
         self.log_text.delete(1.0, tk.END)
         self.log_text.config(state="disabled")
 
+        self.app_log_manager.info("Preview started...") # Log with the actual manager
+
         self.file_organizer.organize_files_threaded(
             source_dir, destination_dir, duplicate_handling, sort_by_date_format, preview_mode=True
         )
@@ -215,6 +233,8 @@ class MainWindow(tk.Tk):
         self.log_text.delete(1.0, tk.END) # Clear previous logs
         self.log_text.config(state="disabled")
 
+        self.app_log_manager.info("Organization started...") # Log with the actual manager
+
         self.file_organizer.organize_files_threaded(
             source_dir, destination_dir, duplicate_handling, sort_by_date_format, preview_mode=False
         )
@@ -224,6 +244,7 @@ class MainWindow(tk.Tk):
         self.file_organizer.stop()
         self._set_ui_busy(False) # UI becomes responsive immediately after stop signal
         self.status_label.config(text="Stopping organization...")
+        self.app_log_manager.info("Organization process requested to stop.") # Log with the actual manager
 
     def _set_ui_busy(self, is_busy):
         """Enables/disables UI elements based on busy status."""
@@ -233,8 +254,9 @@ class MainWindow(tk.Tk):
         self.preview_button.config(state=state)
         self.organize_button.config(state=state)
         self.stop_button.config(state="normal" if is_busy else "disabled")
-        # To truly disable radio buttons, you'd iterate through their parent frame's children
-        # or store references to them. For simplicity in this example, we don't disable them directly.
+        # To truly disable radio buttons and option menus:
+        # Loop through their parent frames' children and set state individually if needed.
+        # For this example, reliance on overall button disable/enable is sufficient for user flow.
 
     def _check_log_queue(self):
         """
@@ -243,8 +265,9 @@ class MainWindow(tk.Tk):
         """
         while True:
             try:
+                # Use .get_nowait() to avoid blocking the GUI
                 message_item = self.log_queue.get_nowait()
-                msg_type = message_item.get("type")
+                msg_type = message_item.get("type") # Ensure 'get' is called on a dict
 
                 if msg_type == "log":
                     message = message_item.get("message")
@@ -257,24 +280,27 @@ class MainWindow(tk.Tk):
                     total = message_item.get("total")
                     status_message = message_item.get("message", "")
 
+                    # Update progress bar and status label
                     if total > 0:
                         progress_value = (current / total) * 100
                         self.progress_var.set(progress_value)
                         self.status_label.config(text=f"{status_message} ({current}/{total})")
-                    else:
+                    else: # Case for 0 files or initial indeterminate state
                         self.progress_var.set(0)
                         self.status_label.config(text=status_message)
 
-                    if current == total: # Process finished
+                    # When process is finished, reset UI state
+                    if current == total:
                         self._set_ui_busy(False)
                         self.progress_bar.stop()
-                        if not status_message: self.status_label.config(text="Ready.")
+                        if not status_message: # If no specific final message, set a default
+                            self.status_label.config(text="Ready.")
 
                 elif msg_type == "preview_results":
                     actions = message_item.get("actions", [])
                     preview_dialog = PreviewDialog(self, actions)
-                    preview_dialog.grab_set() # Make it modal
-                    self.wait_window(preview_dialog)
+                    # The preview_dialog handles its own grab_set, wait_window, etc.
+                    # so we just need to ensure UI state is reset after it closes.
                     self._set_ui_busy(False)
                     self.progress_bar.stop()
                     self.status_label.config(text="Preview ready.")
@@ -283,7 +309,9 @@ class MainWindow(tk.Tk):
                 break # No more messages in the queue for now
             except Exception as e:
                 # Log to console if something goes wrong with processing queue messages
+                # This error is usually internal to the GUI's queue handling.
                 print(f"Error processing GUI queue message: {e}")
+                self.app_log_manager.error(f"Error processing GUI queue message: {e}") # Log to file as well
                 self._set_ui_busy(False) # Attempt to unfreeze UI
                 self.progress_bar.stop()
                 break # Stop processing to avoid infinite loop on error

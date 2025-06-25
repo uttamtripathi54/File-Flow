@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 from PIL import Image # For EXIF data (requires Pillow)
 
-# IMPORTANT: log_manager will be set by app.py via the LogManager.set_global_instance() method
+# IMPORTANT: _global_log_manager_instance will be set by app.py.
 # This makes sure the instance created in app.py is accessible here.
 _global_log_manager_instance = None # Private internal placeholder
 
@@ -15,6 +15,7 @@ def get_log_manager():
     """Retrieves the global log manager instance."""
     if _global_log_manager_instance is None:
         # Fallback for direct testing or unexpected paths, though app.py should set it
+        # This block should ideally not be hit during normal app execution.
         print("Warning: Global log_manager not set. Creating a temporary one in file_utils.")
         from src.core.log_manager import LogManager # Import class for fallback
         temp_log = LogManager(log_file_path="fallback_log.txt")
@@ -26,6 +27,7 @@ def get_log_manager():
 
 def get_file_extension(filename):
     """Returns the lowercase extension of a file."""
+    # os.path.splitext returns a tuple ('filename', '.ext')
     return os.path.splitext(filename)[1].lower()
 
 def get_file_creation_or_modification_date(file_path, use_creation_date=True):
@@ -50,14 +52,16 @@ def get_exif_date_taken(image_path):
     """
     try:
         with Image.open(image_path) as img:
+            # Get EXIF data if available, or return None
             exif_data = img._getexif()
             if exif_data:
-                # 36867 is the tag for DateTimeOriginal
+                # 36867 is the tag for DateTimeOriginal (EXIF spec)
                 if 36867 in exif_data:
                     date_str = exif_data[36867]
                     # EXIF date format is "YYYY:MM:DD HH:MM:SS"
                     return datetime.strptime(date_str, '%Y:%m:%d %H:%M:%S')
     except Exception as e:
+        # Catch various PIL/Pillow errors (e.g., not an image, corrupted EXIF)
         get_log_manager().warning(f"Could not extract EXIF date from '{image_path}': {e}")
     return None
 
@@ -77,12 +81,13 @@ def resolve_duplicate_filepath(filepath, handling_method="rename"):
         base, ext = os.path.splitext(filepath)
         counter = 1
         new_filepath = f"{base} ({counter}){ext}"
+        # Loop until a unique filename is found
         while os.path.exists(new_filepath):
             counter += 1
             new_filepath = f"{base} ({counter}){ext}"
         get_log_manager().info(f"Renaming '{os.path.basename(filepath)}' to '{os.path.basename(new_filepath)}' due to duplicate.")
         return new_filepath
     else:
-        # Default to rename if handling_method is unknown
+        # Default to rename if handling_method is unknown or invalid
         get_log_manager().warning(f"Unknown duplicate handling method '{handling_method}'. Defaulting to 'rename'.")
         return resolve_duplicate_filepath(filepath, "rename")

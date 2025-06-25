@@ -2,12 +2,10 @@ import os
 import shutil
 import threading
 import queue
-# Import file_utils functions directly (they will get the global log_manager internally)
 from src.core.file_utils import get_file_extension, get_file_creation_or_modification_date, resolve_duplicate_filepath, get_exif_date_taken
-
-# Import the NotificationManager class (it will be instantiated/passed)
-from src.core.log_manager import LogManager # Import class for type hinting/understanding
-from src.core.notification_manager import NotificationManager # Import class for type hinting/understanding
+# Import manager classes for type hinting/understanding, instances are passed
+from src.core.log_manager import LogManager
+from src.core.notification_manager import NotificationManager
 
 
 class FileOrganizer:
@@ -28,14 +26,15 @@ class FileOrganizer:
         self.log_queue.put({"type": "progress", "current": current, "total": total, "message": message})
 
     def _log_message(self, level, message):
-        """Logs messages using the passed app_log_manager and sends to GUI queue."""
+        """Logs messages using the passed app_log_manager."""
         if level == "info":
             self.app_log_manager.info(message)
         elif level == "warning":
             self.app_log_manager.warning(message)
         elif level == "error":
             self.app_log_manager.error(message)
-        # The QueueHandler in LogManager already pushes to self.log_queue
+        # The LogManager's QueueHandler automatically puts the formatted log record
+        # into the log_queue, so we don't need to manually put here.
 
     def stop(self):
         """Sets the stop event to terminate the organization process."""
@@ -53,6 +52,7 @@ class FileOrganizer:
     def _organize_files(self, source_dir, destination_dir, duplicate_handling, sort_by_date_format, preview_mode):
         """
         The actual file organization logic. Runs in a separate thread.
+        This now includes recursive traversal using os.walk().
         """
         # Validate paths
         if not os.path.isdir(source_dir):
@@ -77,120 +77,138 @@ class FileOrganizer:
 
         self._log_message("info", f"{'PREVIEW MODE: ' if preview_mode else ''}Starting file organization from '{source_dir}' to '{destination_dir}'...")
 
-        files_to_process = [f for f in os.listdir(source_dir) if os.path.isfile(os.path.join(source_dir, f))]
-        total_files = len(files_to_process)
+        all_files_to_process = []
+        excluded_folders = self.settings.get_excluded_folders() # Get excluded folders from settings
+
+        # Recursively find all files, excluding specified folders
+        # Using a tuple for `dirs[:] = ...` because `dirs` is modified in-place
+        for root, dirs, files in os.walk(source_dir):
+            # Exclude specified folders from being traversed
+            dirs[:] = [d for d in dirs if d not in excluded_folders]
+
+            for filename in files:
+                # Construct full path to file
+                full_file_path = os.path.join(root, filename)
+                all_files_to_process.append(full_file_path)
+
+        total_files = len(all_files_to_process)
         files_moved = 0
         files_skipped = 0
         files_renamed = 0
         errors_count = 0
         preview_actions = []
+        status_text = "" # To hold final status message
 
         if total_files == 0:
-            self._log_message("info", "No files found to organize in the source directory.")
-            self._update_progress(0, 0, "No files found.")
-            self.app_notification_manager.send_notification("File Organizer", "No files found to organize.", timeout=3)
+            status_text = "No files found to organize in the source directory or its subfolders."
+            self._log_message("info", status_text)
+            self.app_notification_manager.send_notification("File Organizer", status_text, timeout=3)
+            self._update_progress(0, 0, status_text) # Send final update
             return
 
-        for i, filename in enumerate(files_to_process):
+        for i, source_filepath in enumerate(all_files_to_process):
             if self._stop_event.is_set():
-                self._log_message("warning", "Organization process was stopped by user.")
-                self.app_notification_manager.send_notification("Organizer Stopped", "File organization was interrupted.", timeout=3)
-                self._update_progress(i, total_files, "Process interrupted.")
+                status_text = "Organization process was stopped by user."
+                self._log_message("warning", status_text)
+                self.app_notification_manager.send_notification("Organizer Stopped", status_text, timeout=3)
+                self._update_progress(i, total_files, status_text) # Send final update
                 return
 
-            source_filepath = os.path.join(source_dir, filename)
-            self._update_progress(i, total_files, f"Processing: {filename}")
+            # Extract just the filename for display/resolution
+            filename_only = os.path.basename(source_filepath)
+            self._update_progress(i, total_files, f"Processing: {filename_only}")
 
             try:
-                file_ext = get_file_extension(filename)
-                category_name = "Others"
-                file_categories = self.settings.get_categories()
+                file_ext = get_file_extension(filename_only)
+                category_name = "Others" # Default category for unmatched files
 
                 # Determine category based on extension
+                file_categories = self.settings.get_categories()
                 for category, extensions in file_categories.items():
                     if file_ext in extensions:
                         category_name = category
                         break
+                # If no category matched, it remains "Others"
 
                 target_category_dir = os.path.join(destination_dir, category_name)
 
-                # Add date-based subfolders if enabled
-                if sort_by_date_format != "None" and category_name != "Others": # Don't date-sort 'Others'
+                # Add date-based subfolders if enabled and not "Others"
+                if sort_by_date_format != "None" and category_name != "Others":
                     file_date = None
                     if category_name == "Images":
                         # Try EXIF date first for images
                         file_date = get_exif_date_taken(source_filepath)
                     if not file_date:
-                        # Fallback to creation/modification date
-                        file_date = get_file_creation_or_modification_date(source_filepath)
+                        # Fallback to modification date (or creation date, using False for mod date)
+                        file_date = get_file_creation_or_modification_date(source_filepath, use_creation_date=False) # Use modification date as more reliable
 
                     if file_date:
+                        date_folder = ""
                         if sort_by_date_format == "Year":
                             date_folder = str(file_date.year)
                         elif sort_by_date_format == "Year-Month":
                             date_folder = file_date.strftime('%Y_%m') # e.g., '2024_06'
                         elif sort_by_date_format == "Year-Month-Day":
                             date_folder = file_date.strftime('%Y_%m_%d') # e.g., '2024_06_25'
-                        else:
-                            date_folder = "" # Should not happen with valid options
 
                         if date_folder:
                              target_category_dir = os.path.join(target_category_dir, date_folder)
 
 
-                # Ensure the target directory exists
+                # Ensure the target directory exists for the current file's destination
                 if not os.path.exists(target_category_dir):
                     os.makedirs(target_category_dir)
                     self._log_message("info", f"Created category directory: '{target_category_dir}'")
 
-                destination_filepath = os.path.join(target_category_dir, filename)
+                destination_filepath_candidate = os.path.join(target_category_dir, filename_only)
 
-                # Resolve duplicates
-                final_destination_filepath = resolve_duplicate_filepath(destination_filepath, duplicate_handling)
+                # Resolve duplicates for the final destination path
+                final_destination_filepath = resolve_duplicate_filepath(destination_filepath_candidate, duplicate_handling)
 
+                # Handle Preview Mode
                 if preview_mode:
-                    action_type = "Move"
-                    if final_destination_filepath is None:
-                        action_type = "Skip (Duplicate)"
-                        preview_actions.append(f"{action_type}: '{filename}' (Source: '{source_filepath}', Destination: '{destination_filepath}')")
-                    elif final_destination_filepath != destination_filepath:
-                        action_type = f"Rename & Move to '{os.path.basename(final_destination_filepath)}'"
-                        preview_actions.append(f"{action_type}: '{filename}' (Source: '{source_filepath}', Destination: '{final_destination_filepath}')")
-                    else:
-                         preview_actions.append(f"{action_type}: '{filename}' (Source: '{source_filepath}', Destination: '{final_destination_filepath}')")
+                    action_description = f"Move '{source_filepath}' to '{destination_filepath_candidate}'"
+                    if final_destination_filepath is None: # Skipped due to duplicate
+                        action_description = f"SKIP (Duplicate): '{os.path.basename(source_filepath)}' (exists at '{destination_filepath_candidate}')"
+                    elif final_destination_filepath != destination_filepath_candidate: # Renamed
+                        action_description = f"RENAME & Move: '{os.path.basename(source_filepath)}' to '{os.path.basename(final_destination_filepath)}'"
+                    preview_actions.append(action_description)
                     continue # Skip actual file operation in preview mode
 
-                if final_destination_filepath is None:
+                # Perform actual file movement
+                if final_destination_filepath is None: # This means it was skipped due to duplicate handling
                     files_skipped += 1
-                    continue # Skip the file as per duplicate handling
+                    continue
 
-                if final_destination_filepath != destination_filepath:
+                if final_destination_filepath != destination_filepath_candidate:
                     files_renamed += 1
 
                 shutil.move(source_filepath, final_destination_filepath)
                 files_moved += 1
-                self._log_message("info", f"Moved: '{filename}' to '{final_destination_filepath}'")
+                self._log_message("info", f"Moved: '{source_filepath}' to '{final_destination_filepath}'")
 
             except FileNotFoundError:
-                self._log_message("error", f"File not found during processing: '{source_filepath}'")
                 errors_count += 1
+                self._log_message("error", f"File not found during processing: '{source_filepath}'. It might have been moved or deleted externally. Skipping.")
             except PermissionError:
+                errors_count += 1
                 self._log_message("error", f"Permission denied for file: '{source_filepath}'. Skipping.")
+            except shutil.Error as e: # Catch shutil specific errors (e.g., same file system, file in use, read-only)
                 errors_count += 1
-            except shutil.Error as e: # Catch shutil specific errors (e.g., same file system, file in use)
-                self._log_message("error", f"Shutil error moving '{filename}': {e}. Skipping.")
-                errors_count += 1
+                self._log_message("error", f"Shutil error moving '{source_filepath}': {e}. Skipping.")
             except Exception as e:
-                self._log_message("error", f"An unexpected error occurred processing '{filename}': {e}")
                 errors_count += 1
+                self._log_message("error", f"An unexpected error occurred processing '{source_filepath}': {e}")
 
+        # Final actions after processing all files
         if preview_mode:
             self.log_queue.put({"type": "preview_results", "actions": preview_actions})
-            self._log_message("info", f"Preview complete. {len(preview_actions)} potential actions identified.")
-            self.app_notification_manager.send_notification("Preview Complete", f"Identified {len(preview_actions)} potential actions.", timeout=3)
-            self.log_queue.put({"type": "progress", "current": total_files, "total": total_files, "message": "Preview Complete."})
+            status_text = f"Preview complete. {len(preview_actions)} potential actions identified."
+            self._log_message("info", status_text)
+            self.app_notification_manager.send_notification("Preview Complete", status_text, timeout=3)
+            self._update_progress(total_files, total_files, status_text) # Send final update
         else:
-            final_message = f"Organization complete! Moved {files_moved} files, renamed {files_renamed} files, skipped {files_skipped} duplicates, encountered {errors_count} errors."
-            self._log_message("info", final_message)
-            self.app_notification_manager.send_notification("Organization Complete", final_message, timeout=5)
-            self._update_progress(total_files, total_files, final_message)
+            status_text = f"Organization complete! Moved {files_moved} files, renamed {files_renamed} files, skipped {files_skipped} duplicates, encountered {errors_count} errors."
+            self._log_message("info", status_text)
+            self.app_notification_manager.send_notification("Organization Complete", status_text, timeout=5)
+            self._update_progress(total_files, total_files, status_text) # Send final update

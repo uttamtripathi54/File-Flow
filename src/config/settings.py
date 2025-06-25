@@ -47,7 +47,8 @@ class SettingsManager:
             "duplicate_handling": "rename", # Options: "skip", "rename"
             "enable_desktop_notifications": True,
             "log_file_path": "organizer_log.txt",
-            "sort_by_date_format": "None" # Options: "None", "Year", "Year-Month", "Year-Month-Day"
+            "sort_by_date_format": "None", # Options: "None", "Year", "Year-Month", "Year-Month-Day"
+            "exclude_folders": [".git", "venv", "__pycache__", "node_modules", ".DS_Store"] # New default excluded folders
         }
 
     def _save_settings(self):
@@ -70,3 +71,7 @@ class SettingsManager:
     def get_categories(self):
         """Returns the file categories mapping."""
         return self.settings.get("file_categories", {})
+
+    def get_excluded_folders(self):
+        """Returns the list of folder names to exclude from traversal."""
+        return self.settings.get("exclude_folders", [])
