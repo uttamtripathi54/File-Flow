@@ -1,0 +1,71 @@
+{
+    "default_source_dir": "C:/Users/Uttam/Downloads",
+    "default_destination_dir": "C:/Users/Uttam/Downloads/DEMO_ENHANCE",
+    "file_categories": {
+        "Documents": [
+            ".pdf",
+            ".doc",
+            ".docx",
+            ".txt",
+            ".rtf",
+            ".odt",
+            ".xls",
+            ".xlsx",
+            ".ppt",
+            ".pptx",
+            ".csv"
+        ],
+        "Images": [
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".gif",
+            ".bmp",
+            ".tiff",
+            ".webp"
+        ],
+        "Videos": [
+            ".mp4",
+            ".mkv",
+            ".flv",
+            ".avi",
+            ".mov",
+            ".wmv"
+        ],
+        "Audio": [
+            ".mp3",
+            ".wav",
+            ".aac",
+            ".flac",
+            ".ogg"
+        ],
+        "Archives": [
+            ".zip",
+            ".rar",
+            ".7z",
+            ".tar",
+            ".gz"
+        ],
+        "Executables": [
+            ".exe",
+            ".msi",
+            ".dmg",
+            ".appimage"
+        ],
+        "Code": [
+            ".py",
+            ".java",
+            ".c",
+            ".cpp",
+            ".html",
+            ".css",
+            ".js",
+            ".php"
+        ],
+        "Others": []
+    },
+    "duplicate_handling": "rename",
+    "enable_desktop_notifications": true,
+    "log_file_path": "organizer_log.txt",
+    "sort_by_date_format": "None"
+}
